@@ -19,6 +19,11 @@ interface RunContext {
    *  falling back to the RapidAPI key saved in Account Settings instead of
    *  requiring it to be re-typed into every single node. */
   accountSettings?: Record<string, string>;
+  /** True when the inspector's "Test node" button is running a single node
+   *  in isolation. A standalone action/integration node is never itself a
+   *  trigger, so the normal "workflow needs a trigger node" requirement
+   *  doesn't apply here — we just want to run the one node that was given. */
+  singleNodeTest?: boolean;
 }
 
 const FETCH_TIMEOUT_MS = 30_000;
@@ -1901,17 +1906,21 @@ async function runNode(
 }
 
 export async function executeWorkflow(ctx: RunContext) {
-  const { nodes, edges, onLog, onStatus, triggerData, accountSettings } = ctx;
+  const { nodes, edges, onLog, onStatus, triggerData, accountSettings, singleNodeTest } = ctx;
 
   const triggerNodes = nodes.filter((n) => n.data.kind.startsWith("trigger."));
-  if (triggerNodes.length === 0) {
+  if (!singleNodeTest && triggerNodes.length === 0) {
     throw new Error("No trigger node found. Add a Trigger node to start the workflow.");
   }
+  // Full workflow run: start from trigger node(s) as before. Single-node
+  // test on a non-trigger node: there's no trigger among the given nodes,
+  // so just run the node(s) we were actually given.
+  const startNodes = triggerNodes.length > 0 ? triggerNodes : nodes;
 
   const outputs = new Map<string, unknown>();
   const outputsByLabel: Record<string, unknown> = {};
   const visited = new Set<string>();
-  const queue: ZalesNode[] = [...triggerNodes];
+  const queue: ZalesNode[] = [...startNodes];
 
   nodes.forEach((n) => onStatus(n.id, "idle"));
 

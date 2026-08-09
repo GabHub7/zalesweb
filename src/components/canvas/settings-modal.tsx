@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as Icons from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useZalesStore } from "@/store/zales-store";
@@ -366,6 +366,7 @@ function ApiKeysTab() {
   const userSettings = useZalesStore((s) => s.userSettings);
   const saveUserSettings = useZalesStore((s) => s.saveUserSettings);
   const fetchUserSettings = useZalesStore((s) => s.fetchUserSettings);
+  const t = useZalesStore((s) => s.t);
 
   const [fields, setFields] = useState({
     geminiApiKey: "",
@@ -400,6 +401,56 @@ function ApiKeysTab() {
   const [webhookId, setWebhookId] = useState<string | null>(null);
   const [webhookIdCopied, setWebhookIdCopied] = useState(false);
 
+  // Telegram webhook registration/status (README §5 — Webhook Registration & Validation).
+  const [tgStatus, setTgStatus] = useState<{
+    configured: boolean;
+    matches: boolean;
+    url: string | null;
+    pendingUpdateCount: number;
+    lastErrorMessage: string | null;
+  } | null>(null);
+  const [tgStatusLoading, setTgStatusLoading] = useState(false);
+  const [tgStatusError, setTgStatusError] = useState<string | null>(null);
+  const [tgRegistering, setTgRegistering] = useState(false);
+
+  const loadTelegramWebhookStatus = useCallback(async () => {
+    setTgStatusLoading(true);
+    setTgStatusError(null);
+    try {
+      const res = await fetch("/api/telegram/webhook", { credentials: "include" });
+      const json = await res.json();
+      if (!res.ok) {
+        setTgStatus(null);
+        setTgStatusError(json?.message || "Gagal memeriksa status webhook Telegram.");
+        return;
+      }
+      setTgStatus(json);
+    } catch {
+      setTgStatus(null);
+      setTgStatusError("Gagal memeriksa status webhook Telegram. Cek koneksi.");
+    } finally {
+      setTgStatusLoading(false);
+    }
+  }, []);
+
+  async function registerTelegramWebhook() {
+    setTgRegistering(true);
+    setTgStatusError(null);
+    try {
+      const res = await fetch("/api/telegram/webhook", { method: "POST", credentials: "include" });
+      const json = await res.json();
+      if (!res.ok) {
+        setTgStatusError(json?.message || "Webhook Telegram gagal menerima update. Periksa endpoint dan deployment.");
+        return;
+      }
+      await loadTelegramWebhookStatus();
+    } catch {
+      setTgStatusError("Gagal menghubungi Telegram API. Coba lagi sebentar lagi.");
+    } finally {
+      setTgRegistering(false);
+    }
+  }
+
   useEffect(() => {
     fetch("/api/user/webhook-id", { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
@@ -410,6 +461,14 @@ function ApiKeysTab() {
         // best-effort — the field below just won't populate
       });
   }, []);
+
+  // Only worth checking once a bot token is actually saved (untouched +
+  // non-empty means "saved & encrypted", per the keyField hint below it).
+  useEffect(() => {
+    if (fields.telegramBotToken && !touched.telegramBotToken) {
+      loadTelegramWebhookStatus();
+    }
+  }, [fields.telegramBotToken, touched.telegramBotToken, loadTelegramWebhookStatus]);
 
   useEffect(() => {
     fetchUserSettings().then((ok) => {
@@ -460,9 +519,11 @@ function ApiKeysTab() {
     const ok = await saveUserSettings(payload);
     setSaving(false);
     if (ok) {
+      const tokenJustChanged = touched.telegramBotToken;
       setTouched({});
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      if (tokenJustChanged) loadTelegramWebhookStatus();
     } else {
       setSaveError("Gagal menyimpan API key. Cek koneksi, lalu coba lagi.");
     }
@@ -576,7 +637,7 @@ function ApiKeysTab() {
       <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
 
       <div className="space-y-3">
-        <h4 className="text-[12px] font-bold text-neutral-800 dark:text-neutral-200">Telegram Bot</h4>
+        <h4 className="text-[12px] font-bold text-neutral-800 dark:text-neutral-200">{t("settings.telegramTitle")}</h4>
         <p className="text-[11px] leading-relaxed text-neutral-400">
           Dipakai otomatis sama trigger &quot;Telegram Bot&quot; dan node &quot;Telegram&quot; (buat balas) kalau field
           di node itu dikosongin. Ambil token dari{" "}
@@ -586,12 +647,65 @@ function ApiKeysTab() {
           di Telegram (perintah /newbot).
         </p>
         {keyField("telegramBotToken", "Bot Token", "123456789:ABCdef...")}
-        <p className="text-[10.5px] leading-relaxed text-neutral-400">
-          Setelah token diisi &amp; disimpan, pasang webhook-nya (sekali saja) dengan buka URL ini di browser:<br />
-          <code className="break-all rounded bg-neutral-100 px-1 dark:bg-neutral-800">
-            https://api.telegram.org/bot&lt;TOKEN&gt;/setWebhook?url=https://domain-lo/api/webhooks/telegram/&lt;TOKEN&gt;
-          </code>
-        </p>
+
+        {fields.telegramBotToken && !touched.telegramBotToken && (
+          <div className="space-y-2 rounded-lg border border-neutral-200 bg-neutral-50 p-2.5 dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-medium text-neutral-600 dark:text-neutral-300">{t("settings.telegramWebhookStatus")}</p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={loadTelegramWebhookStatus}
+                  disabled={tgStatusLoading}
+                  className="rounded-md border border-neutral-300 px-2 py-1 text-[10.5px] font-medium text-neutral-600 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-300"
+                >
+                  {tgStatusLoading ? t("settings.telegramChecking") : t("settings.telegramRecheck")}
+                </button>
+                <button
+                  type="button"
+                  onClick={registerTelegramWebhook}
+                  disabled={tgRegistering}
+                  className="rounded-md bg-neutral-900 px-2 py-1 text-[10.5px] font-medium text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+                >
+                  {tgRegistering ? t("settings.telegramRegistering") : t("settings.telegramRegister")}
+                </button>
+              </div>
+            </div>
+
+            {tgStatusError && (
+              <p className="text-[10.5px] leading-relaxed text-red-600 dark:text-red-400">{tgStatusError}</p>
+            )}
+
+            {!tgStatusError && tgStatus && (
+              <div className="space-y-1 text-[10.5px] leading-relaxed">
+                <p className="flex items-center gap-1.5">
+                  <Icons.ShieldCheck
+                    size={12}
+                    className={tgStatus.matches ? "text-green-600 dark:text-green-400" : "text-amber-500"}
+                  />
+                  {tgStatus.matches
+                    ? t("settings.telegramWebhookActive")
+                    : tgStatus.configured
+                      ? t("settings.telegramWebhookMismatch")
+                      : t("settings.telegramWebhookMissing")}
+                </p>
+                {tgStatus.url && (
+                  <p className="break-all text-neutral-400">
+                    {t("settings.telegramUrlLabel")}: <code className="rounded bg-neutral-100 px-1 dark:bg-neutral-800">{tgStatus.url}</code>
+                  </p>
+                )}
+                <p className="text-neutral-400">{t("settings.telegramPendingUpdates")}: {tgStatus.pendingUpdateCount}</p>
+                {tgStatus.lastErrorMessage && (
+                  <p className="text-red-500">{t("settings.telegramLastError")}: {tgStatus.lastErrorMessage}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {(!fields.telegramBotToken || touched.telegramBotToken) && (
+          <p className="text-[10.5px] leading-relaxed text-neutral-400">{t("settings.telegramSaveTokenFirst")}</p>
+        )}
       </div>
 
       <div className="h-px bg-neutral-100 dark:bg-neutral-800" />

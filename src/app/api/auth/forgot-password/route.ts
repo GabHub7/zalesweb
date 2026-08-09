@@ -8,8 +8,17 @@ async function sendResetEmail(to: string, resetUrl: string) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
   if (!apiKey || !from) {
-    // No email provider configured — log so local/dev flows still work.
-    console.warn(`[forgot-password] RESEND_API_KEY not set. Reset link for ${to}: ${resetUrl}`);
+    // No email provider configured. The reset URL embeds a live,
+    // unexpired account-takeover token — never write it to production
+    // logs (README §14: secrets never go to console/logs). Only echo it
+    // in local development, where console output isn't shipped anywhere.
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`[forgot-password] RESEND_API_KEY not set (dev only). Reset link for ${to}: ${resetUrl}`);
+    } else {
+      console.error(
+        "[forgot-password] RESEND_API_KEY/RESEND_FROM_EMAIL missing in production — password reset emails cannot be sent."
+      );
+    }
     return;
   }
   await fetch("https://api.resend.com/emails", {

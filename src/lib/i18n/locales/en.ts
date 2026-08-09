@@ -1,0 +1,97 @@
+/**
+ * English locale. Keep this object's shape IDENTICAL to `id.ts` — the
+ * translation-coverage check in `src/lib/i18n/index.ts` compares key sets
+ * between locales and will flag anything that drifts out of sync.
+ */
+const en = {
+  common: {
+    save: "Save",
+    cancel: "Cancel",
+    close: "Close",
+    delete: "Delete",
+    edit: "Edit",
+    loading: "Loading...",
+    saving: "Saving...",
+    error: "Something went wrong",
+    retry: "Retry",
+    copy: "Copy",
+    copied: "Copied!",
+  },
+  nav: {
+    chatAi: "Chat AI",
+    apiKeys: "API Keys",
+    new: "New",
+    open: "Open",
+    save: "Save",
+    runLog: "Run log",
+    history: "History",
+    settings: "Settings",
+    run: "Run",
+    running: "Running...",
+  },
+  runlog: {
+    title: "Run log",
+    historyTitle: "Execution History",
+    historyHint:
+      'Includes runs triggered from outside (RapidAPI/WhatsApp webhook, schedule, etc.) — not just the ones you triggered by clicking "Run". Open one and expand its trigger node to see the raw payload that actually came in.',
+    empty: "No executions yet.",
+    emptyHint: "Run a workflow to see its results.",
+    emptyDrawer: "No runs yet. Click Run to execute the workflow.",
+    loadFailed: "Failed to load history.",
+    clear: "Clear",
+    node: "node",
+  },
+  settings: {
+    telegramTitle: "Telegram Bot",
+    telegramWebhookStatus: "Webhook Status",
+    telegramRecheck: "Recheck",
+    telegramChecking: "Checking...",
+    telegramRegister: "Register Webhook",
+    telegramRegistering: "Registering...",
+    telegramSaveTokenFirst:
+      'Save your Bot Token first — webhook status and the "Register Webhook" button appear here once the token is saved.',
+    telegramWebhookActive: "Webhook is active & pointing to Zales.",
+    telegramWebhookMismatch: 'Webhook is active, but its URL points elsewhere — click "Register Webhook" to fix it.',
+    telegramWebhookMissing: 'Telegram webhook is not configured yet. Click "Register Webhook" to set it up.',
+    telegramUrlLabel: "URL",
+    telegramPendingUpdates: "Pending updates",
+    telegramLastError: "Last error",
+  },
+  telegram: {
+    webhookNotConfigured: "Telegram webhook is not configured.",
+    webhookCheckUrlAndToken: "Check the webhook URL and Bot Token.",
+    webhookFailed: "The Telegram webhook failed to receive an update.",
+    webhookCheckEndpoint: "Check the endpoint and deployment.",
+    invalidToken: "The Telegram Bot Token is invalid.",
+    checkTokenFromBotfather: "Check the token from @BotFather.",
+  },
+  language: {
+    selectorLabel: "Language",
+    id: "Bahasa Indonesia",
+    en: "English",
+  },
+  sidebar: {
+    title: "Nodes",
+    subtitle: "Drag onto the canvas",
+    searchPlaceholder: "Search nodes...",
+    noMatches: 'No nodes match "{query}".',
+  },
+  inspector: {
+    noParams: "This node has no configurable parameters.",
+    testNode: "Test node",
+    testing: "Testing...",
+    testSuccess: "Node ran successfully.",
+  },
+  workflows: {
+    title: "My Workflows",
+    loading: "Loading...",
+    empty: "No saved workflows yet. Build something and hit Save.",
+    updated: "Updated",
+    loadFailed: "Failed to load workflow.",
+    deleteFailed: "Failed to delete workflow.",
+    deleteConfirm: "Delete this workflow? This cannot be undone.",
+    fetchFailed: "Failed to load.",
+  },
+} as const;
+
+export default en;

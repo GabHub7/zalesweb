@@ -11,6 +11,7 @@ import { RunLogEntry } from "@/types/zales";
 import WorkflowsModal from "@/components/canvas/workflows-modal";
 import SettingsModal from "@/components/canvas/settings-modal";
 import RunHistoryPanel from "@/components/canvas/run-history-panel";
+import LanguageSelector from "@/components/language-selector";
 
 export default function Toolbar({
   onToggleSidebar,
@@ -35,6 +36,7 @@ export default function Toolbar({
   const isSaving = useZalesStore((s) => s.isSaving);
   const saveWorkflow = useZalesStore((s) => s.saveWorkflow);
   const resetWorkflow = useZalesStore((s) => s.resetWorkflow);
+  const t = useZalesStore((s) => s.t);
 
   const [showWorkflows, setShowWorkflows] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -107,27 +109,27 @@ export default function Toolbar({
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           <Icons.Sparkles size={13} />
-          Chat AI
+          {t("nav.chatAi")}
         </Link>
         <Link
           href="/api-keys"
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           <Icons.KeyRound size={13} />
-          API Keys
+          {t("nav.apiKeys")}
         </Link>
         <div className="mx-1 h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
         <button
           onClick={resetWorkflow}
           className="rounded-md px-2.5 py-1.5 text-[12.5px] font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
-          New
+          {t("nav.new")}
         </button>
         <button
           onClick={() => setShowWorkflows(true)}
           className="rounded-md px-2.5 py-1.5 text-[12.5px] font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
-          Open
+          {t("nav.open")}
         </button>
         <button
           onClick={() => saveWorkflow()}
@@ -135,7 +137,7 @@ export default function Toolbar({
           className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12.5px] font-medium text-neutral-600 hover:bg-neutral-100 disabled:opacity-40 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           {isSaving ? <Icons.Loader2 size={13} className="animate-spin" /> : <Icons.Save size={13} />}
-          Save
+          {t("nav.save")}
         </button>
 
         <div className="mx-1 h-4 w-px bg-neutral-200 dark:bg-neutral-800" />
@@ -143,22 +145,23 @@ export default function Toolbar({
           onClick={onToggleLog}
           className="rounded-md px-2.5 py-1.5 text-[12.5px] font-medium text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
-          Run log
+          {t("nav.runLog")}
         </button>
         <button
           onClick={() => setShowHistory(true)}
           disabled={!currentWorkflowId}
           className="rounded-md px-2.5 py-1.5 text-[12.5px] font-medium text-neutral-600 hover:bg-neutral-100 disabled:opacity-40 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
-          Riwayat
+          {t("nav.history")}
         </button>
         <button
           onClick={() => setShowSettings(true)}
           className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-          title="Settings"
+          title={t("nav.settings")}
         >
           <Icons.Settings size={16} />
         </button>
+        <LanguageSelector />
         <button
           onClick={toggleTheme}
           className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
@@ -182,7 +185,7 @@ export default function Toolbar({
           ) : (
             <Icons.Play size={13} />
           )}
-          {isRunning ? "Running..." : "Run"}
+          {isRunning ? t("nav.running") : t("nav.run")}
         </button>
       </div>
 

@@ -6,6 +6,7 @@ import { useZalesStore } from "@/store/zales-store";
 export default function RunLogDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const runLog = useZalesStore((s) => s.runLog);
   const clearLog = useZalesStore((s) => s.clearLog);
+  const t = useZalesStore((s) => s.t);
 
   if (!open) return null;
 
@@ -13,14 +14,14 @@ export default function RunLogDrawer({ open, onClose }: { open: boolean; onClose
     <div className="flex h-56 shrink-0 flex-col border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
       <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-2 dark:border-neutral-800">
         <span className="text-[12px] font-medium text-neutral-600 dark:text-neutral-400">
-          Run log {runLog.length > 0 && `(${runLog.length})`}
+          {t("runlog.title")} {runLog.length > 0 && `(${runLog.length})`}
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={clearLog}
             className="rounded-md px-2 py-1 text-[11.5px] text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
           >
-            Clear
+            {t("runlog.clear")}
           </button>
           <button
             onClick={onClose}
@@ -32,9 +33,7 @@ export default function RunLogDrawer({ open, onClose }: { open: boolean; onClose
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-2 font-mono text-[11.5px]">
         {runLog.length === 0 && (
-          <p className="py-6 text-center text-neutral-400 dark:text-neutral-600">
-            No runs yet. Click Run to execute the workflow.
-          </p>
+          <p className="py-6 text-center text-neutral-400 dark:text-neutral-600">{t("runlog.emptyDrawer")}</p>
         )}
         {runLog.map((entry) => {
           const output = entry.output as

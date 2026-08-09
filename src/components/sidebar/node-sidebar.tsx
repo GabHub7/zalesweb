@@ -4,6 +4,8 @@ import { useState } from "react";
 import * as Icons from "lucide-react";
 import { CATEGORY_LABELS, CATEGORY_ORDER, getNodesByCategory } from "@/lib/node-registry";
 import { NodeDefinition } from "@/types/zales";
+import { useZalesStore } from "@/store/zales-store";
+import { getNodeLabel, getNodeDescription } from "@/lib/i18n/node-copy";
 
 const grouped = getNodesByCategory();
 
@@ -14,17 +16,20 @@ function onDragStart(e: React.DragEvent, kind: string) {
 
 function NodeEntry({ def }: { def: NodeDefinition }) {
   const IconComp = (Icons as unknown as Record<string, Icons.LucideIcon>)[def.icon] || Icons.Box;
+  const language = useZalesStore((s) => s.language);
+  const label = getNodeLabel(def.kind, language, def.label);
+  const description = getNodeDescription(def.kind, language, def.description);
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, def.kind)}
       className="flex cursor-grab items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-neutral-100 active:cursor-grabbing dark:hover:bg-neutral-800"
-      title={def.description}
+      title={description}
     >
       <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
         <IconComp size={13} strokeWidth={1.75} />
       </div>
-      <span className="truncate text-[12.5px] text-neutral-700 dark:text-neutral-300">{def.label}</span>
+      <span className="truncate text-[12.5px] text-neutral-700 dark:text-neutral-300">{label}</span>
     </div>
   );
 }
@@ -61,6 +66,8 @@ function CategorySection({ category }: { category: string }) {
 
 export default function NodeSidebar({ collapsed }: { collapsed: boolean }) {
   const [query, setQuery] = useState("");
+  const t = useZalesStore((s) => s.t);
+  const language = useZalesStore((s) => s.language);
 
   if (collapsed) return null;
 
@@ -69,20 +76,24 @@ export default function NodeSidebar({ collapsed }: { collapsed: boolean }) {
   const matches = searching
     ? Object.values(grouped)
         .flat()
-        .filter((def) => def.label.toLowerCase().includes(q) || def.description.toLowerCase().includes(q))
+        .filter((def) => {
+          const label = getNodeLabel(def.kind, language, def.label).toLowerCase();
+          const description = getNodeDescription(def.kind, language, def.description).toLowerCase();
+          return label.includes(q) || description.includes(q);
+        })
     : [];
 
   return (
     <aside className="flex w-64 shrink-0 flex-col overflow-y-auto border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
       <div className="border-b border-neutral-100 px-3.5 py-3 dark:border-neutral-800">
-        <h2 className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">Nodes</h2>
-        <p className="mt-0.5 text-[11px] text-neutral-400 dark:text-neutral-500">Drag onto the canvas</p>
+        <h2 className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">{t("sidebar.title")}</h2>
+        <p className="mt-0.5 text-[11px] text-neutral-400 dark:text-neutral-500">{t("sidebar.subtitle")}</p>
         <div className="relative mt-2.5">
           <Icons.Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Cari node..."
+            placeholder={t("sidebar.searchPlaceholder")}
             className="w-full rounded-md border border-neutral-200 bg-white py-1.5 pl-7 pr-2.5 text-[12px] text-neutral-800 outline-none transition-colors focus:border-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:border-neutral-500"
           />
         </div>
@@ -97,7 +108,7 @@ export default function NodeSidebar({ collapsed }: { collapsed: boolean }) {
             </div>
           ) : (
             <p className="px-2.5 py-3 text-[11.5px] text-neutral-400">
-              Gak ada node yang cocok dengan &quot;{query}&quot;.
+              {t("sidebar.noMatches").replace("{query}", query)}
             </p>
           )
         ) : (

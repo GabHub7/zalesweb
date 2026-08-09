@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import * as Icons from "lucide-react";
+import { useZalesStore } from "@/store/zales-store";
 
 interface RunLogEntry {
   id: string;
@@ -23,16 +24,74 @@ interface RunRow {
 }
 
 export default function RunHistoryPanel({ workflowId, onClose }: { workflowId: string; onClose: () => void }) {
+  const t = useZalesStore((s) => s.t);
+  const language = useZalesStore((s) => s.language);
   const [runs, setRuns] = useState<RunRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null);
+  // Distinguishes the first load (shows "Memuat...") from background
+  // refreshes (silent — no flicker while the user is browsing runs).
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/workflows/${workflowId}/runs`)
-      .then((r) => r.json())
-      .then((data) => (Array.isArray(data) ? setRuns(data) : setError("Gagal load riwayat.")))
-      .catch(() => setError("Gagal load riwayat."));
+    // Guards against a slow response landing after the component has
+    // already unmounted (modal closed) or a newer poll has started —
+    // avoids the classic "setState after unmount" leak and races where
+    // an older, slower request overwrites a newer one's result.
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    async function loadRuns() {
+      try {
+        const res = await fetch(`/api/workflows/${workflowId}/runs`, { credentials: "include" });
+        const data = await res.json();
+        if (cancelled) return;
+        if (Array.isArray(data)) {
+          setRuns(data);
+          setError(null);
+        } else {
+          setError(t("runlog.loadFailed"));
+        }
+      } catch {
+        if (!cancelled) setError(t("runlog.loadFailed"));
+      } finally {
+        if (!cancelled) setInitialLoading(false);
+      }
+    }
+
+    function scheduleNext() {
+      // Don't poll while the tab/window is hidden — resumes automatically
+      // via the visibilitychange listener below when the user comes back.
+      if (document.visibilityState !== "visible") return;
+      timer = setTimeout(async () => {
+        await loadRuns();
+        scheduleNext();
+      }, 3000);
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        if (timer) clearTimeout(timer);
+        loadRuns().then(scheduleNext);
+      } else if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    }
+
+    loadRuns().then(scheduleNext);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+    // `t` intentionally excluded — it's a stable reference from the store
+    // (reads the current language at call-time), re-running this effect
+    // on every language change would restart polling unnecessarily.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId]);
 
   return (
@@ -43,7 +102,7 @@ export default function RunHistoryPanel({ workflowId, onClose }: { workflowId: s
           <div className="flex items-center gap-1.5">
             <Icons.History size={14} className="text-neutral-700 dark:text-neutral-300" />
             <span className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">
-              Riwayat Eksekusi
+              {t("runlog.historyTitle")}
             </span>
           </div>
           <button
@@ -55,18 +114,14 @@ export default function RunHistoryPanel({ workflowId, onClose }: { workflowId: s
         </div>
 
         <p className="border-b border-neutral-100 px-4 py-2 text-[11px] leading-relaxed text-neutral-400 dark:border-neutral-800">
-          Termasuk run yang dipicu dari luar (webhook RapidAPI/WhatsApp, jadwal, dll) — bukan cuma yang kamu klik
-          &quot;Run&quot; manual. Buka salah satu, expand node trigger-nya buat lihat payload mentah yang beneran
-          masuk.
+          {t("runlog.historyHint")}
         </p>
 
         <div className="flex-1 overflow-y-auto px-3 py-2">
           {error && <p className="px-2 py-4 text-[12px] text-red-500">{error}</p>}
-          {!runs && !error && <p className="px-2 py-4 text-[12px] text-neutral-400">Memuat...</p>}
-          {runs && runs.length === 0 && (
-            <p className="px-2 py-4 text-[12px] text-neutral-400">
-              Belum ada run tercatat. Coba trigger dari webhook/WA, atau klik &quot;Run&quot;.
-            </p>
+          {initialLoading && !error && <p className="px-2 py-4 text-[12px] text-neutral-400">{t("common.loading")}</p>}
+          {!initialLoading && runs && runs.length === 0 && (
+            <p className="px-2 py-4 text-[12px] text-neutral-400">{t("runlog.empty")}</p>
           )}
           {runs?.map((run) => (
             <div key={run.id} className="mb-1.5 rounded-lg border border-neutral-100 dark:border-neutral-800">
@@ -81,11 +136,11 @@ export default function RunHistoryPanel({ workflowId, onClose }: { workflowId: s
                     }`}
                   />
                   <span className="text-[12px] text-neutral-700 dark:text-neutral-300">
-                    {new Date(run.started_at).toLocaleString("id-ID")}
+                    {new Date(run.started_at).toLocaleString(language === "en" ? "en-US" : "id-ID")}
                   </span>
                 </span>
                 <span className="flex items-center gap-2 text-[10.5px] text-neutral-400">
-                  {run.log?.length ?? 0} node
+                  {run.log?.length ?? 0} {t("runlog.node")}
                   <Icons.ChevronDown
                     size={13}
                     className={`transition-transform ${expandedRun === run.id ? "rotate-180" : ""}`}

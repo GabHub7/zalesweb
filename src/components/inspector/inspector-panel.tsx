@@ -6,6 +6,7 @@ import { useZalesStore } from "@/store/zales-store";
 import { NODE_REGISTRY, PROVIDER_PRESETS } from "@/lib/node-registry";
 import { NodeParamSchema, ZalesNode, RunLogEntry } from "@/types/zales";
 import { executeWorkflow } from "@/lib/execution-engine";
+import { getNodeDescription } from "@/lib/i18n/node-copy";
 
 // Maps node param keys to account settings keys — used to show "from account" hints
 const ACCOUNT_FALLBACK_MAP: Record<string, string> = {
@@ -328,11 +329,23 @@ export default function InspectorPanel() {
   const setNodeStatus = useZalesStore((s) => s.setNodeStatus);
   const appendLog = useZalesStore((s) => s.appendLog);
   const userSettings = useZalesStore((s) => s.userSettings);
+  const t = useZalesStore((s) => s.t);
+  const language = useZalesStore((s) => s.language);
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const node = nodes.find((n) => n.id === selectedNodeId);
+
+  // Clear any leftover test result from a previously-selected node so it
+  // never appears to belong to whatever node is selected now. Adjusting
+  // state during render (rather than in an effect) per React's guidance:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [lastSeenNodeId, setLastSeenNodeId] = useState(selectedNodeId);
+  if (selectedNodeId !== lastSeenNodeId) {
+    setLastSeenNodeId(selectedNodeId);
+    setTestResult(null);
+  }
 
   if (!node) return null;
 
@@ -351,8 +364,9 @@ export default function InspectorPanel() {
         edges: [],
         onLog: appendLog,
         onStatus: setNodeStatus,
+        singleNodeTest: true,
       });
-      setTestResult({ ok: true, message: "Node ran successfully." });
+      setTestResult({ ok: true, message: t("inspector.testSuccess") });
     } catch (err) {
       setTestResult({ ok: false, message: err instanceof Error ? err.message : String(err) });
     } finally {
@@ -369,7 +383,9 @@ export default function InspectorPanel() {
             onChange={(e) => updateNodeLabel(node.id, e.target.value)}
             className="w-full truncate bg-transparent text-[13px] font-semibold text-neutral-900 outline-none dark:text-neutral-100"
           />
-          <p className="mt-0.5 text-[11px] text-neutral-400 dark:text-neutral-500">{def?.description}</p>
+          <p className="mt-0.5 text-[11px] text-neutral-400 dark:text-neutral-500">
+            {def ? getNodeDescription(node.data.kind, language, def.description) : ""}
+          </p>
         </div>
         <button
           onClick={() => selectNode(null)}
@@ -386,7 +402,7 @@ export default function InspectorPanel() {
         {node.data.kind === "trigger.whatsapp_gateway" && <WhatsAppSimulator />}
         {def?.params.length === 0 && (
           <p className="text-[12px] text-neutral-400 dark:text-neutral-500">
-            This node has no configurable parameters.
+            {t("inspector.noParams")}
           </p>
         )}
         {def?.params.map((schema) => {
@@ -433,7 +449,7 @@ export default function InspectorPanel() {
           ) : (
             <Icons.PlayCircle size={13} />
           )}
-          {testing ? "Testing..." : "Test node"}
+          {testing ? t("inspector.testing") : t("inspector.testNode")}
         </button>
         {testResult && (
           <div

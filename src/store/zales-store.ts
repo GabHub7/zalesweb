@@ -15,14 +15,23 @@ import { NodeKind, RunLogEntry, ExecutionStatus, ZalesNode } from "@/types/zales
 import { NODE_REGISTRY } from "@/lib/node-registry";
 import { apiUrl } from "@/lib/api-base";
 import { persistThemeCookie } from "@/lib/theme-cookie";
+import { persistLanguageCookie, Language } from "@/lib/language-cookie";
+import { translate, TranslationKey, checkTranslationCoverage } from "@/lib/i18n";
 
 export type { ZalesNode };
+
+if (typeof window !== "undefined") {
+  // One-time dev-mode check that id.ts/en.ts have the same key set —
+  // catches translation drift before it ships (README §17.4).
+  checkTranslationCoverage();
+}
 
 interface ZalesState {
   nodes: ZalesNode[];
   edges: Edge[];
   selectedNodeId: string | null;
   theme: "light" | "dark";
+  language: Language;
   runLog: RunLogEntry[];
   isRunning: boolean;
   currentWorkflowId: string | null;
@@ -42,6 +51,8 @@ interface ZalesState {
   setNodeStatus: (id: string, status: ExecutionStatus) => void;
 
   toggleTheme: () => void;
+  setLanguage: (language: Language) => void;
+  t: (key: TranslationKey) => string;
 
   appendLog: (entry: RunLogEntry) => void;
   clearLog: () => void;
@@ -62,11 +73,17 @@ function initialTheme(): "light" | "dark" {
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
-export const useZalesStore = create<ZalesState>((set, get) => ({
-  nodes: [],
+function initialLanguage(): Language {
+  if (typeof document === "undefined") return "id";
+  const lang = document.documentElement.lang;
+  return lang === "en" ? "en" : "id";
+}
+
+export const useZalesStore = create<ZalesState>((set, get) => ({  nodes: [],
   edges: [],
   selectedNodeId: null,
   theme: initialTheme(),
+  language: initialLanguage(),
   runLog: [],
   isRunning: false,
   currentWorkflowId: null,
@@ -156,6 +173,13 @@ export const useZalesStore = create<ZalesState>((set, get) => ({
     persistThemeCookie(next);
     set({ theme: next });
   },
+
+  setLanguage: (language) => {
+    persistLanguageCookie(language);
+    if (typeof document !== "undefined") document.documentElement.lang = language;
+    set({ language });
+  },
+  t: (key) => translate(get().language, key),
 
   appendLog: (entry) => set({ runLog: [...get().runLog, entry] }),
   clearLog: () => set({ runLog: [] }),

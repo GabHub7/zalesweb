@@ -17,45 +17,50 @@ export default function WorkflowsModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadWorkflow = useZalesStore((s) => s.loadWorkflow);
+  const t = useZalesStore((s) => s.t);
+  const language = useZalesStore((s) => s.language);
 
   useEffect(() => {
     fetch(apiUrl("/api/workflows"), { credentials: "include" })
       .then(async (res) => {
-        if (!res.ok) throw new Error((await res.json()).error || "Failed to load");
+        if (!res.ok) throw new Error((await res.json()).error || t("workflows.fetchFailed"));
         return res.json();
       })
       .then(setWorkflows)
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false));
+    // `t` intentionally excluded — stable reference from the store, re-running
+    // this fetch on language change would refetch the list unnecessarily.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleOpen(id: string) {
     try {
       const res = await fetch(apiUrl(`/api/workflows/${id}`), { credentials: "include" });
       if (!res.ok) {
-        setError("Failed to load workflow.");
+        setError(t("workflows.loadFailed"));
         return;
       }
       const wf = await res.json();
       loadWorkflow(wf.id, wf.name, wf.nodes, wf.edges);
       onClose();
     } catch {
-      setError("Failed to load workflow.");
+      setError(t("workflows.loadFailed"));
     }
   }
 
   async function handleDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirm("Delete this workflow? This cannot be undone.")) return;
+    if (!confirm(t("workflows.deleteConfirm"))) return;
     try {
       const res = await fetch(apiUrl(`/api/workflows/${id}`), { method: "DELETE", credentials: "include" });
       if (res.ok) {
         setWorkflows((prev) => prev.filter((w) => w.id !== id));
       } else {
-        setError("Failed to delete workflow.");
+        setError(t("workflows.deleteFailed"));
       }
     } catch {
-      setError("Failed to delete workflow.");
+      setError(t("workflows.deleteFailed"));
     }
   }
 
@@ -65,7 +70,7 @@ export default function WorkflowsModal({ onClose }: { onClose: () => void }) {
       <div className="fixed left-1/2 top-1/2 z-50 w-[420px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
         <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3 dark:border-neutral-800">
           <span className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">
-            My Workflows
+            {t("workflows.title")}
           </span>
           <button
             onClick={onClose}
@@ -77,7 +82,7 @@ export default function WorkflowsModal({ onClose }: { onClose: () => void }) {
 
         <div className="max-h-96 overflow-y-auto p-1.5">
           {loading && (
-            <p className="py-8 text-center text-[12px] text-neutral-400">Loading...</p>
+            <p className="py-8 text-center text-[12px] text-neutral-400">{t("workflows.loading")}</p>
           )}
           {error && (
             <p className="px-3 py-4 text-[12px] text-red-500 dark:text-red-400">
@@ -85,9 +90,7 @@ export default function WorkflowsModal({ onClose }: { onClose: () => void }) {
             </p>
           )}
           {!loading && !error && workflows.length === 0 && (
-            <p className="py-8 text-center text-[12px] text-neutral-400">
-              No saved workflows yet. Build something and hit Save.
-            </p>
+            <p className="py-8 text-center text-[12px] text-neutral-400">{t("workflows.empty")}</p>
           )}
           {workflows.map((wf) => (
             <button
@@ -100,7 +103,7 @@ export default function WorkflowsModal({ onClose }: { onClose: () => void }) {
                   {wf.name}
                 </p>
                 <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                  Updated {new Date(wf.updated_at).toLocaleString()}
+                  {t("workflows.updated")} {new Date(wf.updated_at).toLocaleString(language === "en" ? "en-US" : "id-ID")}
                 </p>
               </div>
               <span
