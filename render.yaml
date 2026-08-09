@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: zales
+    runtime: node
+    # No WhatsApp socket to keep alive anymore (WA now goes through a
+    # RapidAPI/third-party gateway via webhook, not a live local socket),
+    # so the free plan works fine — no persistent disk needed either.
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: WEBHOOK_VERIFY_TOKEN
+        sync: false
+      - key: CRON_SECRET
+        sync: false
