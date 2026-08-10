@@ -95,6 +95,20 @@ const id = {
     deleteConfirm: "Hapus workflow ini? Gak bisa dibatalin.",
     fetchFailed: "Gagal load.",
   },
+  chat: {
+    title: "Zales Chat",
+    workflowLabel: "Workflow",
+    noWorkflows: "Belum ada workflow",
+    noConversations: "Belum ada percakapan.",
+    newConversation: "Mulai percakapan baru",
+    toggleSidebar: "Toggle sidebar",
+    selectOrCreate: "Pilih atau buat percakapan",
+    logout: "Logout",
+    attachFile: "Lampirkan file",
+    messagePlaceholder: "Tulis pesan... (Shift+Enter untuk baris baru)",
+    pickWorkflowHint: "Pilih workflow di kiri, lalu klik + untuk mulai percakapan baru.",
+    emptyMessagesHint: "Ngobrol bebas di sini — bisa lampirkan gambar, PDF, ZIP, atau file lainnya.",
+  },
 } as const;
 
 export default id;

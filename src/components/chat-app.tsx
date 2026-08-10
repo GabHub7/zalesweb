@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import * as Icons from "lucide-react";
+import { useZalesStore } from "@/store/zales-store";
 
 interface WorkflowSummary {
   id: string;
@@ -71,6 +72,7 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 export default function ChatApp() {
+  const t = useZalesStore((s) => s.t);
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
@@ -270,18 +272,18 @@ export default function ChatApp() {
             <Link href="/" className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-800" title="Kembali ke canvas">
               <Icons.ArrowLeft size={15} />
             </Link>
-            <span className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">Zales Chat</span>
+            <span className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">{t("chat.title")}</span>
           </div>
 
           <div className="border-b border-neutral-200 p-3 dark:border-neutral-800">
-            <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-wide text-neutral-400">Workflow</label>
+            <label className="mb-1 block text-[10.5px] font-semibold uppercase tracking-wide text-neutral-400">{t("chat.workflowLabel")}</label>
             <div className="flex gap-1.5">
               <select
                 value={newChatWorkflowId}
                 onChange={(e) => setNewChatWorkflowId(e.target.value)}
                 className="w-full rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[12px] text-neutral-800 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               >
-                {workflows.length === 0 && <option value="">Belum ada workflow</option>}
+                {workflows.length === 0 && <option value="">{t("chat.noWorkflows")}</option>}
                 {workflows.map((w) => (
                   <option key={w.id} value={w.id}>
                     {w.name}
@@ -291,7 +293,7 @@ export default function ChatApp() {
               <button
                 onClick={handleNewConversation}
                 disabled={!newChatWorkflowId}
-                title="Mulai percakapan baru"
+                title={t("chat.newConversation")}
                 className="shrink-0 rounded-md bg-neutral-900 p-1.5 text-white disabled:opacity-30 dark:bg-neutral-100 dark:text-neutral-900"
               >
                 <Icons.Plus size={14} />
@@ -304,7 +306,7 @@ export default function ChatApp() {
 
           <div className="flex-1 overflow-y-auto p-2">
             {conversations.length === 0 && (
-              <p className="px-2 py-4 text-center text-[11.5px] text-neutral-400">Belum ada percakapan.</p>
+              <p className="px-2 py-4 text-center text-[11.5px] text-neutral-400">{t("chat.noConversations")}</p>
             )}
             {conversations.map((c) => (
               <button
@@ -338,7 +340,7 @@ export default function ChatApp() {
             <button
               onClick={() => setSidebarOpen((v) => !v)}
               className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              title="Toggle sidebar"
+              title={t("chat.toggleSidebar")}
             >
               <Icons.PanelLeft size={16} />
             </button>
@@ -346,12 +348,12 @@ export default function ChatApp() {
               <Image src="/logo.png" alt="Zales" width={20} height={20} className="rounded-md" />
             </div>
             <span className="text-[13px] font-medium text-neutral-700 dark:text-neutral-300">
-              {activeConv ? activeConv.title : "Pilih atau buat percakapan"}
+              {activeConv ? activeConv.title : t("chat.selectOrCreate")}
             </span>
           </div>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            title="Logout"
+            title={t("chat.logout")}
             className="rounded-md p-1.5 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
           >
             <Icons.LogOut size={16} />
@@ -361,7 +363,7 @@ export default function ChatApp() {
         {!activeConvId ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-neutral-400 dark:text-neutral-600">
             <Icons.MessageSquare size={28} />
-            <p className="text-[13px]">Pilih workflow di kiri, lalu klik + untuk mulai percakapan baru.</p>
+            <p className="text-[13px]">{t("chat.pickWorkflowHint")}</p>
           </div>
         ) : (
           <>
@@ -388,7 +390,7 @@ export default function ChatApp() {
                 {!loadingMessages && messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center gap-2 py-24 text-center text-neutral-400 dark:text-neutral-600">
                     <Icons.Sparkles size={28} />
-                    <p className="text-[13px]">Ngobrol bebas di sini — bisa lampirkan gambar, PDF, ZIP, atau file lainnya.</p>
+                    <p className="text-[13px]">{t("chat.emptyMessagesHint")}</p>
                   </div>
                 )}
                 {messages.map((m) => (
@@ -470,7 +472,7 @@ export default function ChatApp() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className="mb-0.5 shrink-0 rounded-md p-1.5 text-neutral-400 hover:bg-neutral-200 hover:text-neutral-700 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
-                    title="Lampirkan file"
+                    title={t("chat.attachFile")}
                   >
                     <Icons.Paperclip size={16} />
                   </button>
@@ -488,7 +490,7 @@ export default function ChatApp() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Tulis pesan... (Shift+Enter untuk baris baru)"
+                    placeholder={t("chat.messagePlaceholder")}
                     rows={1}
                     className="max-h-40 flex-1 resize-none bg-transparent text-[13.5px] text-neutral-800 outline-none placeholder:text-neutral-400 dark:text-neutral-100 dark:placeholder:text-neutral-500"
                   />

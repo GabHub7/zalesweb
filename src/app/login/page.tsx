@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { persistThemeCookie } from "@/lib/theme-cookie";
+import { persistLanguageCookie, type Language } from "@/lib/language-cookie";
 
 function ZalesLogoMark({ size = 32 }: { size?: number }) {
   return (
@@ -203,7 +204,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [lang, setLang] = useState<"en" | "id">("id");
+  const [lang, setLang] = useState<Language>("id");
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const langMenuRef = useRef<HTMLDivElement>(null);
@@ -221,8 +222,13 @@ export default function LoginPage() {
     const isDark = document.documentElement.classList.contains("dark");
     setTheme(isDark ? "dark" : "light");
 
-    const savedLang = localStorage.getItem("zales-lang") || "id";
-    setLang(savedLang as "en" | "id");
+    // Same source of truth as the rest of the app (README §12.1 — one
+    // language setting, not a page-local one): the server already baked
+    // the saved language into <html lang> from the zales-language cookie,
+    // same as it does for theme, so just read that back instead of a
+    // separate localStorage key.
+    const htmlLang = document.documentElement.lang;
+    setLang(htmlLang === "en" ? "en" : "id");
   }, []);
 
   useEffect(() => {
@@ -243,9 +249,10 @@ export default function LoginPage() {
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
   };
 
-  const changeLang = (l: "en" | "id") => {
+  const changeLang = (l: Language) => {
     setLang(l);
-    localStorage.setItem("zales-lang", l);
+    persistLanguageCookie(l);
+    document.documentElement.lang = l;
     setShowLangMenu(false);
   };
 

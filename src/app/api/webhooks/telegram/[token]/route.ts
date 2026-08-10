@@ -97,9 +97,14 @@ async function dispatchToWorkflows(
   botToken: string,
   triggerData: { chatId: string; from: string; text: string; fileId: string | null; mediaType: string | null }
 ) {
-  const workflows = await listWorkflowsFull();
+  const incomingToken = botToken.trim();
+  console.log(`[Telegram] Update received (chatId=${triggerData.chatId || "?"})`);
 
-  for (const wf of workflows) {
+  const workflows = await listWorkflowsFull();
+  const telegramWorkflows = workflows.filter((wf) => wf.nodes.some((n) => n.data?.kind === "trigger.telegram"));
+  let matched = 0;
+
+  for (const wf of telegramWorkflows) {
     const triggerNode = wf.nodes.find((n) => n.data?.kind === "trigger.telegram");
     if (!triggerNode) continue;
     if (!wf.user_id) continue;
@@ -108,14 +113,32 @@ async function dispatchToWorkflows(
     // token (or the trigger's own override) matches the token this
     // specific webhook URL was called with. Without this check, any bot's
     // incoming messages would fan out to every user's Telegram workflows.
+    // Both sides are trimmed — a stray trailing space from copy-pasting a
+    // token (very easy to do from Telegram's own message) would otherwise
+    // silently drop every incoming message with zero error or run record.
     const owner = await getUserSettingsDecrypted(wf.user_id);
-    const botTokenFilter = (triggerNode.data.params?.botTokenFilter as string) || "";
-    const ownerBotToken = botTokenFilter || owner.telegramBotToken || "";
-    if (!ownerBotToken || ownerBotToken !== botToken) continue;
+    const botTokenFilter = ((triggerNode.data.params?.botTokenFilter as string) || "").trim();
+    const ownerBotToken = botTokenFilter || (owner.telegramBotToken || "").trim();
+    if (!ownerBotToken) {
+      console.log(`[Telegram] Skip workflow ${wf.id}: owner has no Bot Token saved.`);
+      continue;
+    }
+    if (ownerBotToken !== incomingToken) {
+      console.log(`[Telegram] Skip workflow ${wf.id}: Bot Token mismatch (webhook URL token doesn't match the one saved for this workflow/account).`);
+      continue;
+    }
+    matched++;
 
     const keyword = (triggerNode.data.params?.keyword as string) || "";
-    if (keyword && !triggerData.text.toLowerCase().includes(keyword.toLowerCase())) continue;
-    if (!triggerData.text && !triggerData.fileId) continue;
+    if (keyword && !triggerData.text.toLowerCase().includes(keyword.toLowerCase())) {
+      console.log(`[Telegram] Skip workflow ${wf.id}: message text doesn't contain required keyword "${keyword}".`);
+      continue;
+    }
+    if (!triggerData.text && !triggerData.fileId) {
+      console.log(`[Telegram] Skip workflow ${wf.id}: message has no text and no file (e.g. sticker, unsupported type).`);
+      continue;
+    }
+    console.log(`[Telegram] Trigger matched: workflow ${wf.id}`);
 
     const collected: Array<Record<string, unknown>> = [];
     let hadError = false;
@@ -178,5 +201,18 @@ async function dispatchToWorkflows(
     }
     const status = hadError || collected.some((e) => e.status === "error") ? "error" : "success";
     await recordRun(wf.id, status, collected as never);
+  }
+
+  if (telegramWorkflows.length === 0) {
+    // Most common real-world cause of "I sent a message and nothing
+    // happened, no error, nothing in history": the workflow with the
+    // Telegram Bot node was never actually saved (still only in the
+    // browser's local canvas state), so it doesn't exist in the DB this
+    // webhook queries against.
+    console.log("[Telegram] No saved workflow has a Telegram Bot trigger node — was the workflow saved?");
+  } else if (matched === 0) {
+    console.log(
+      `[Telegram] Update matched 0 of ${telegramWorkflows.length} Telegram-trigger workflow(s) — check Bot Token match, keyword filter, or message type above.`
+    );
   }
 }

@@ -92,6 +92,20 @@ const en = {
     deleteConfirm: "Delete this workflow? This cannot be undone.",
     fetchFailed: "Failed to load.",
   },
+  chat: {
+    title: "Zales Chat",
+    workflowLabel: "Workflow",
+    noWorkflows: "No workflows yet",
+    noConversations: "No conversations yet.",
+    newConversation: "Start new conversation",
+    toggleSidebar: "Toggle sidebar",
+    selectOrCreate: "Select or start a conversation",
+    logout: "Logout",
+    attachFile: "Attach file",
+    messagePlaceholder: "Type a message... (Shift+Enter for a new line)",
+    pickWorkflowHint: "Pick a workflow on the left, then click + to start a new conversation.",
+    emptyMessagesHint: "Chat freely here — you can attach images, PDFs, ZIPs, or other files.",
+  },
 } as const;
 
 export default en;
